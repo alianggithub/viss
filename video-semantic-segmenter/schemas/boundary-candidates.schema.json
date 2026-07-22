@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["id", "timestamp_s", "source", "kind", "raw_score", "normalized_score", "provider", "payload"],
+    "properties": {
+      "timestamp_s": {"type": "number", "minimum": 0},
+      "normalized_score": {"type": "number", "minimum": 0, "maximum": 1},
+      "payload": {"type": "object"}
+    }
+  }
+}

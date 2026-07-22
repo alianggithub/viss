@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["language", "duration_s", "provider", "segments"],
+  "properties": {
+    "language": {"type": "string"},
+    "duration_s": {"type": "number", "minimum": 0},
+    "provider": {"type": "string"},
+    "segments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "start_s", "end_s", "text", "words", "provenance"]
+      }
+    }
+  }
+}
