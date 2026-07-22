@@ -6,6 +6,7 @@ from pathlib import Path
 
 from .config import load_config, validate_config
 from .evaluate import evaluate_run
+from .frame_annotations import render_frame_annotations
 from .io import read_json
 from .pipeline import analyze
 from .review import record_override, render_reviewed
@@ -36,6 +37,10 @@ def _parser() -> argparse.ArgumentParser:
     render_parser = subparsers.add_parser("render", help="rerender from raw results and overrides")
     render_parser.add_argument("run_dir", type=Path)
     render_parser.add_argument("--format", choices=("markdown", "json", "srt", "vtt"))
+    annotate_parser = subparsers.add_parser(
+        "annotate-frames", help="regenerate timestamped, scene-named frame outputs"
+    )
+    annotate_parser.add_argument("run_dir", type=Path)
     review_parser = subparsers.add_parser("review", help="record a non-destructive human override")
     review_parser.add_argument("run_dir", type=Path)
     review_parser.add_argument("segment_id")
@@ -81,6 +86,13 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "render":
             render_reviewed(args.run_dir.resolve())
             print(f"rendered: {args.run_dir.resolve()}")
+            return 0
+        if args.command == "annotate-frames":
+            run_dir = args.run_dir.resolve()
+            config = load_config(run_dir / "config.json")
+            segments = read_json(run_dir / "segments.json")["segments"]
+            rows = render_frame_annotations(run_dir, segments, config.frame_annotation)
+            print(f"annotated frames: {len(rows)}")
             return 0
         if args.command == "review":
             record_override(

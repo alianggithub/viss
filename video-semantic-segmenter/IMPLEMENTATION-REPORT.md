@@ -2,13 +2,15 @@
 
 ## 1. Status
 
-The reusable version-one implementation is complete. It accepts a local video and
+The reusable implementation is complete. Version 0.2 accepts a local video and
 produces:
 
 - semantic chapter timestamps;
 - segment titles and key points;
 - a complete timestamped transcript in JSON, Markdown, text, SRT, and WebVTT;
 - one early meaningful JPEG frame for every segment;
+- timestamp/scene annotated frame copies, scene-aware filenames, and JSON/CSV/Markdown
+  frame index tables;
 - OCR, visual-transition, transcript-gap, and boundary evidence;
 - resumable checkpoints, validation results, and an audit log; and
 - non-destructive human review overrides.
@@ -16,10 +18,10 @@ produces:
 The implementation does not contain names, phrases, timestamps, or paths learned from
 the proof-of-concept video.
 
-Verification completed on 2026-07-16:
+Version 0.2 verification completed on 2026-07-19:
 
 - lint: passed;
-- automated tests: 9 passed;
+- automated tests: 13 passed;
 - Python wheel and source package: built successfully;
 - supplied-video regression: 81 validated segments and 81 representative frames;
 - source-integrity check: the MP4 SHA-256 remained unchanged; and
@@ -178,6 +180,15 @@ Rerender from the immutable automatic result plus any review overrides:
 /auto/binos-tools/bin/uv run vseg render "/path/to/new-video-analysis"
 ```
 
+Add or regenerate the annotated frames and indexes for an existing run without
+rerunning transcription or segmentation:
+
+```bash
+/auto/binos-tools/bin/uv run vseg annotate-frames "/path/to/new-video-analysis"
+```
+
+This command is also the upgrade path for output produced by ViSS 0.1.
+
 To deliberately create another run when the chosen output directory is already in
 use, add `--force-new-run`. A timestamped run subdirectory will be created.
 
@@ -228,7 +239,12 @@ After a successful run, start with:
 - `chapters.md`: timestamp and title for each semantic segment;
 - `key-points.md`: summarized content for each segment;
 - `transcript/transcript.md`: readable complete transcript;
-- `frames/`: representative frames;
+- `frames/segment-*.jpg`: stable representative frames used by the pipeline;
+- `frames/annotated/`: timestamp/scene overlays with names such as
+  `0003__00-02-14-250__West-Lake.jpg`;
+- `frames/index.md`: human-readable frame table;
+- `frames/index.csv`: spreadsheet-friendly frame table;
+- `frames/index.json`: complete machine-readable frame metadata;
 - `report.md`: warning and review summary; and
 - `segments.json`: canonical machine-readable result.
 
@@ -249,6 +265,17 @@ evidence/boundaries.json
 checkpoints/
 logs/run.jsonl
 ```
+
+The index contains one row for each representative segment frame. It records the
+precise frame timestamp, segment boundaries and title, estimated source frame number,
+canonical and annotated paths, selection quality/reason, and review status. It does
+not enumerate every decoded source frame: at 30 fps that would create 108,000 rows per
+hour and undermine the original selective-frame design.
+
+When a reviewer changes a segment title or representative-frame timestamp, ViSS
+automatically rebuilds the annotated image and all three indexes. Unicode scene names
+are preserved where the filesystem supports them, and unsafe path characters and
+overlong UTF-8 filenames are handled automatically.
 
 ## 9. Evaluate against human annotations
 
@@ -317,7 +344,7 @@ Run from the parent directory:
 ```bash
 cd /nobackup/chrgu/test
 
-zip -r video-semantic-segmenter-0.1.0-source.zip \
+zip -r video-semantic-segmenter-0.2.0-source.zip \
   video-semantic-segmenter \
   -x 'video-semantic-segmenter/.venv/*' \
      'video-semantic-segmenter/.pytest_cache/*' \
@@ -339,7 +366,7 @@ The recommended destination system has Linux, Python 3.11 or newer, `uv`, suffic
 disk space, and network access for the initial dependency/model installation.
 
 ```bash
-unzip video-semantic-segmenter-0.1.0-source.zip
+unzip video-semantic-segmenter-0.2.0-source.zip
 cd video-semantic-segmenter
 
 uv sync --frozen --extra all

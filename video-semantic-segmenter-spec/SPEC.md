@@ -1,8 +1,8 @@
 # Generic Video Semantic Segmenter — Implementation Specification
 
-Version: 0.1  
-Date: 2026-07-16  
-Status: Approved implementation target; not production-complete  
+Version: 0.2  
+Date: 2026-07-19  
+Status: Implemented and verified  
 Audience: junior implementation agents, reviewers, and test agents  
 Evidence baseline: `../神奇美景在中国-宋春玲/poc-output/POC-REPORT.md`
 
@@ -22,8 +22,9 @@ Given a user-supplied video, produce:
 1. variable-length semantic segments with start/end timestamps;
 2. a concise title and key points for every segment;
 3. the earliest meaningful representative frame for every segment;
-4. a complete timestamped machine transcript; and
-5. machine-readable evidence and confidence explaining each boundary and title.
+4. a timestamp/scene annotated copy and index row for every representative frame;
+5. a complete timestamped machine transcript; and
+6. machine-readable evidence and confidence explaining each boundary and title.
 
 A semantic segment is a contiguous portion of a video centered on one coherent
 subject, location, attraction, activity, argument, procedure, or purpose. Its
@@ -41,6 +42,8 @@ duration is determined by content, not by a fixed time window.
 | Boundary candidate | Possible segment start supported by one or more signals. |
 | Evidence | Transcript, audio, visual, embedded metadata, OCR, or user signal supporting a candidate. |
 | Representative frame | Earliest clear and semantically relevant frame for a segment. |
+| Annotated frame | Additive copy of a representative frame with a visible timestamp and optional scene title. |
+| Frame index | JSON, CSV, or Markdown table mapping representative frames to timestamps and segments. |
 | Run | One resumable analysis of one immutable source video. |
 
 Shots and scenes MUST NOT automatically become semantic segments. One attraction
@@ -75,6 +78,17 @@ may contain dozens of cuts; a topic may also change without a visual cut.
 - Destructive edits to the source video.
 - Cloud upload by default.
 
+### 4.3 Version 0.2 frame-annotation enhancement
+
+- Preserve the stable canonical representative frame for each segment.
+- Generate an additive annotated copy with a visible source timestamp and scene title.
+- Give annotated copies readable filenames containing display order, timestamp, and
+  a path-safe scene title.
+- Produce equivalent JSON, CSV, and Markdown frame indexes.
+- Regenerate annotation artifacts after title or representative-frame review changes.
+- Retrofit a completed 0.1 run without rerunning ASR, OCR, or segmentation.
+- Do not enumerate or persist every decoded source-video frame.
+
 ## 5. Prohibited POC Coupling
 
 Production code MUST NOT contain:
@@ -99,6 +113,7 @@ vseg analyze INPUT --output OUTPUT_DIR [options]
 vseg resume RUN_DIR
 vseg validate RUN_DIR
 vseg render RUN_DIR [--format markdown|json|srt|vtt]
+vseg annotate-frames RUN_DIR
 ```
 
 Minimum `analyze` options:
@@ -150,7 +165,12 @@ OUTPUT_DIR/
 ├── chapters.md
 ├── key-points.md
 ├── frames/
-│   └── <segment-id>.jpg
+│   ├── <segment-id>.jpg
+│   ├── annotated/
+│   │   └── <index>__<timestamp>__<scene-title>.jpg
+│   ├── index.json
+│   ├── index.csv
+│   └── index.md
 ├── checkpoints/
 │   └── <stage>.json
 └── logs/
@@ -166,6 +186,11 @@ Rules:
 - Rerunning a completed stage with identical inputs MUST be idempotent.
 - No output file may claim “human verified” unless a human review event exists.
 - The source hash and config hash MUST appear in `run.json`.
+- Canonical `frames/<segment-id>.jpg` paths MUST remain stable for compatibility.
+- Every representative frame MUST have exactly one frame-index row when annotation is
+  enabled.
+- Annotated filenames MUST be path-safe, bounded below filesystem component limits,
+  and preserve readable Unicode when supported.
 
 ## 8. Architecture
 
@@ -183,6 +208,8 @@ Source probe
                                        +-----------------------+------------------+
                                        |                       |                  |
                                   key points           representative frame   renderers
+                                                               |
+                                                     annotation + frame index
 ```
 
 Every box MUST expose a module interface and write a checkpoint. An implementation
@@ -393,7 +420,33 @@ The decision MUST record candidate scores and why the winner was chosen.
 “First meaningful” means earliest acceptable and relevant, not literal first
 decoded frame and not simply the visually prettiest frame.
 
-### 10.11 Stage K — Rendering and validation
+### 10.11 Stage K — Frame annotation and indexing
+
+For each representative frame, the renderer MUST:
+
+1. retain the canonical `frames/<segment-id>.jpg`;
+2. create an annotated copy under `frames/annotated/`;
+3. overlay `HH:MM:SS.mmm` and, when enabled, the semantic-segment title;
+4. derive a filename from display order, timestamp, and normalized scene title;
+5. emit one consistent row to `index.json`, `index.csv`, and `index.md`; and
+6. remove stale annotated copies before a deterministic rerender.
+
+The index row MUST include display index, segment ID/title/boundaries, precise frame
+timestamp in seconds and display form, approximate source frame number when average
+FPS is available, canonical and annotated paths, selection quality/reason, and review
+state. The approximate frame number is informational; the presentation timestamp is
+authoritative, especially for variable-frame-rate media.
+
+Unicode titles SHOULD remain readable. Reserved path characters, control characters,
+excess whitespace, and overlong UTF-8 names MUST be normalized safely. Overlay
+rendering SHOULD use a configured font, then a CJK-capable system font, then a safe
+fallback.
+
+`vseg annotate-frames RUN_DIR` MUST perform this stage alone on a completed run. A
+pre-0.2 run without annotation configuration MUST remain valid until explicitly
+retrofitted.
+
+### 10.12 Stage L — Rendering and validation
 
 Render chapters, key points, transcript formats, and frames only from validated
 manifests. Validation MUST confirm:
@@ -402,6 +455,7 @@ manifests. Validation MUST confirm:
 - `0 <= start < end <= source_duration + tolerance`;
 - IDs and paths are unique;
 - every referenced frame exists;
+- annotation index counts and annotated frame paths agree when annotation is enabled;
 - transcript cues are time ordered;
 - output JSON matches its schema; and
 - incomplete/review states are clearly visible.
@@ -483,6 +537,36 @@ calibration. Invented precision is prohibited.
 }
 ```
 
+### 11.4 `frames/index.json`
+
+```json
+{
+  "schema_version": "1.0",
+  "frame_count": 1,
+  "frames": [
+    {
+      "index": 1,
+      "segment_id": "seg-0001",
+      "scene_title": "Example attraction",
+      "segment_start_s": 10.07,
+      "segment_end_s": 14.71,
+      "frame_timestamp_s": 10.43,
+      "frame_timestamp": "00:00:10.430",
+      "source_frame_number_estimate": 313,
+      "original_path": "frames/seg-0001.jpg",
+      "annotated_path": "frames/annotated/0001__00-00-10-430__Example-attraction.jpg",
+      "annotated_filename": "0001__00-00-10-430__Example-attraction.jpg",
+      "quality_score": 0.89,
+      "selection_reason": "earliest candidate above thresholds",
+      "needs_review": false
+    }
+  ]
+}
+```
+
+`index.csv` MUST expose the same fields as tabular columns. `index.md` MUST contain
+a human-readable table with working relative links to annotated images.
+
 ## 12. Checkpointing and Idempotency
 
 Stages use this state model:
@@ -542,6 +626,16 @@ frame_selection:
   min_quality: 0.55
   min_relevance: 0.55
 
+frame_annotation:
+  enabled: true
+  overlay_timestamp: true
+  overlay_scene_title: true
+  scene_aware_filenames: true
+  font_path: null
+  font_size_ratio: 0.042
+  jpeg_quality: 92
+  max_scene_filename_chars: 64
+
 privacy:
   allow_network_models: false
   retain_temporary_audio: false
@@ -572,8 +666,8 @@ duration. It MUST NOT retain all full-resolution decoded frames in memory.
 Version 1 CPU target for a 10-minute 1080p or smaller video:
 
 - no more than 2 GiB application peak memory, excluding model memory;
-- no more than one persisted representative JPEG per final segment plus explicitly
-  enabled diagnostics;
+- no more than one canonical and one annotated representative JPEG per final segment
+  plus explicitly enabled diagnostics;
 - resumable progress at least once per pipeline stage and per semantic segment;
 - performance metrics recorded per stage.
 

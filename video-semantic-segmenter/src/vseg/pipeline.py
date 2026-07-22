@@ -15,6 +15,7 @@ import yaml
 from .checkpoints import CheckpointStore
 from .config import Config
 from .evidence import RapidOcrProvider, detect_visual_events
+from .frame_annotations import render_frame_annotations
 from .frames import select_representative_frame
 from .gap_audit import recover_suspicious_gaps
 from .io import atomic_write_json, read_json, sha256_file
@@ -111,7 +112,7 @@ def analyze(
             "updated_at": _now(),
             "completed_stages": ["probe"],
             "warnings": warnings,
-            "software_versions": {"vseg": "0.1.0", "media": "PyAV"},
+            "software_versions": {"vseg": "0.2.0", "media": "PyAV"},
         },
     )
     _log(run_dir, "probe", "source probe complete")
@@ -218,6 +219,7 @@ def analyze(
     progress("[8/8] Rendering and validating deliverables")
     render_transcript(run_dir, transcript)
     render_segments(run_dir, segments)
+    render_frame_annotations(run_dir, segments, config.frame_annotation)
     atomic_write_json(
         run_dir / "segments.raw.json",
         {"schema_version": "1.0", "segments": jsonable(segments)},
@@ -248,7 +250,7 @@ def analyze(
                 "render",
             ],
             "warnings": warnings,
-            "software_versions": {"vseg": "0.1.0", "asr": transcript.provider},
+            "software_versions": {"vseg": "0.2.0", "asr": transcript.provider},
         },
     )
     if sha256_file(media_path) != source.sha256:

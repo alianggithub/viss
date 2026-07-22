@@ -1,8 +1,10 @@
 # Video Semantic Segmenter
 
 `vseg` turns a local video into semantic chapters, key points, a complete timestamped
-transcript, and one early meaningful frame per segment. It uses the full transcript as
-the primary signal and treats scene changes and OCR as supporting evidence.
+transcript, and one early meaningful frame per segment. Each selected frame also gets
+a timestamp/scene overlay, a readable scene-aware filename, and a row in JSON, CSV,
+and Markdown indexes. It uses the full transcript as the primary signal and treats
+scene changes and OCR as supporting evidence.
 
 For a complete preparation checklist, copyable execution commands, review workflow,
 troubleshooting, and the implementation results, see
@@ -36,6 +38,7 @@ Resume or validate a run:
 uv run vseg resume output/run-1
 uv run vseg validate output/run-1
 uv run vseg render output/run-1
+uv run vseg annotate-frames output/run-1
 uv run vseg review output/run-1 segment-0002 --title "Corrected title" \
   --frame-timestamp 42.5 --reviewer alice --verified
 uv run vseg evaluate output/run-1 reference-annotations.json
@@ -52,7 +55,9 @@ for the engineering breakdown.
 - `chapters.md`: compact chapter list
 - `key-points.md`: segment-level key points
 - `transcript/`: JSON, text, SRT, and WebVTT transcript forms
-- `frames/`: representative frames
+- `frames/segment-*.jpg`: stable canonical representative frames
+- `frames/annotated/`: timestamped copies named by frame time and scene
+- `frames/index.json`, `index.csv`, and `index.md`: searchable frame tables
 - `evidence/`: visual, OCR, gap-audit, candidate, and fused-boundary records
 - `validation.json` and `report.md`: quality and review summary
 - `segments.raw.json` and `overrides.json`: immutable automatic result plus review audit
@@ -69,3 +74,5 @@ directory, and resumable metadata is keyed by source and configuration hashes.
 - Use a smaller ASR model or lower visual sampling rates when CPU or memory is constrained.
 - Human review changes rendered outputs through `overrides.json`; transcript and evidence files
   remain untouched, and overrides are reapplied after resume.
+- Frame indexing covers every representative segment frame, not every decoded source-video
+  frame. This avoids producing an impractical 30 rows/images per second for typical video.

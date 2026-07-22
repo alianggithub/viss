@@ -1,6 +1,6 @@
 # Generic Video Semantic Segmenter — Junior-Agent Task Backlog
 
-Version: 0.1  
+Version: 0.2  
 Companion specification: `SPEC.md`  
 Task size target: approximately 0.5–2 focused engineering days per task
 
@@ -517,9 +517,45 @@ runs.
 **Acceptance:** A fully mocked run renders exactly the documented tree and
 `vseg validate` reports zero errors.
 
+### T13A — Representative-frame annotation and indexes
+
+**Dependencies:** T01, T11, T12, T13  
+**Can run in parallel:** yes, after the frame and segment contracts stabilize  
+**Owned files:** `frame_annotations.py`, `frame-index.schema.json`, annotation tests
+
+**Goal:** Make every selected representative frame immediately traceable to its source
+timestamp and semantic scene without persisting all decoded frames.
+
+**Deliverables:**
+
+- additive timestamp/scene overlay under `frames/annotated/`;
+- Unicode-preserving, path-safe, byte-bounded scene filenames;
+- authoritative JSON index plus equivalent CSV and Markdown tables;
+- approximate source-frame number derived from average FPS when available;
+- configurable font, overlay fields, JPEG quality, and filename behavior;
+- `vseg annotate-frames RUN_DIR` retrofit command;
+- automatic regeneration after human title/frame overrides;
+- stale annotated-file cleanup while preserving canonical frames; and
+- backward-compatible validation for pre-0.2 runs.
+
+**Tests:**
+
+- timestamp formatting and estimated frame number;
+- Chinese/English scene names and unsafe-character normalization;
+- long multibyte titles remain below filesystem filename limits;
+- JSON, CSV, and Markdown contain matching frame records;
+- Markdown relative image links resolve;
+- rerender removes a stale scene filename after title review;
+- retrofit CLI operates without invoking analysis providers; and
+- full pipeline validation requires annotation artifacts for new 0.2 runs.
+
+**Acceptance:** Every representative frame in a new run has one readable annotated
+copy and one consistent index row; a 0.1 run can be retrofitted without ASR,
+segmentation, or source-media modification.
+
 ### T14 — CLI and pipeline orchestration
 
-**Dependencies:** T02–T13  
+**Dependencies:** T02–T13 and T13A  
 **Can run in parallel:** no; final integration owner  
 **Owned files:** `cli.py`, `pipeline.py`, orchestration tests
 

@@ -6,7 +6,9 @@ from typing import Any
 
 from PIL import Image
 
+from .config import load_config
 from .evidence import extract_frame
+from .frame_annotations import render_frame_annotations
 from .frames import frame_quality
 from .io import atomic_write_json, read_json
 from .render import render_segment_dicts
@@ -117,6 +119,8 @@ def render_reviewed(run_dir: Path) -> None:
         if event.get("verified"):
             segment["boundary_needs_review"] = False
     render_segment_dicts(run_dir, segments)
+    config = load_config(run_dir / "config.json")
+    render_frame_annotations(run_dir, segments, config.frame_annotation)
     errors = validate_run(run_dir)
     if errors:
         raise ValueError("review overrides produce invalid output: " + "; ".join(errors))

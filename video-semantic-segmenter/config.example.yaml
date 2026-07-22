@@ -30,6 +30,15 @@ frame_selection:
   sample_fps: 3.0
   min_quality: 0.45
   min_relevance: 0.0
+frame_annotation:
+  enabled: true
+  overlay_timestamp: true
+  overlay_scene_title: true
+  scene_aware_filenames: true
+  font_path: null
+  font_size_ratio: 0.042
+  jpeg_quality: 92
+  max_scene_filename_chars: 64
 privacy:
   allow_network_models: false
   retain_temporary_audio: false

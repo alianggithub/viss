@@ -60,6 +60,18 @@ class FrameSelectionConfig:
 
 
 @dataclass(slots=True)
+class FrameAnnotationConfig:
+    enabled: bool = True
+    overlay_timestamp: bool = True
+    overlay_scene_title: bool = True
+    scene_aware_filenames: bool = True
+    font_path: str | None = None
+    font_size_ratio: float = 0.042
+    jpeg_quality: int = 92
+    max_scene_filename_chars: int = 64
+
+
+@dataclass(slots=True)
 class PrivacyConfig:
     allow_network_models: bool = False
     retain_temporary_audio: bool = False
@@ -73,6 +85,7 @@ class Config:
     ocr: OcrConfig = field(default_factory=OcrConfig)
     semantic: SemanticConfig = field(default_factory=SemanticConfig)
     frame_selection: FrameSelectionConfig = field(default_factory=FrameSelectionConfig)
+    frame_annotation: FrameAnnotationConfig = field(default_factory=FrameAnnotationConfig)
     privacy: PrivacyConfig = field(default_factory=PrivacyConfig)
 
     def canonical_json(self) -> str:
@@ -89,6 +102,7 @@ _SECTIONS: dict[str, type[Any]] = {
     "ocr": OcrConfig,
     "semantic": SemanticConfig,
     "frame_selection": FrameSelectionConfig,
+    "frame_annotation": FrameAnnotationConfig,
     "privacy": PrivacyConfig,
 }
 
@@ -132,3 +146,10 @@ def validate_config(config: Config) -> None:
         raise ValueError("ocr.mode must be auto, on, or off")
     if config.runtime.device not in {"auto", "cpu", "cuda"}:
         raise ValueError("runtime.device must be auto, cpu, or cuda")
+    annotation = config.frame_annotation
+    if not 0.01 <= annotation.font_size_ratio <= 0.2:
+        raise ValueError("frame_annotation.font_size_ratio must be between 0.01 and 0.2")
+    if not 1 <= annotation.jpeg_quality <= 100:
+        raise ValueError("frame_annotation.jpeg_quality must be between 1 and 100")
+    if not 12 <= annotation.max_scene_filename_chars <= 160:
+        raise ValueError("frame_annotation.max_scene_filename_chars must be between 12 and 160")

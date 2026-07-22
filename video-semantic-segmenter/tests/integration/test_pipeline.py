@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import csv
 from fractions import Fraction
 from pathlib import Path
 
@@ -81,6 +82,13 @@ def test_pipeline_produces_valid_deliverables(tmp_path: Path) -> None:
     analyze(source, run, config, transcriber=FakeTranscriber(), ocr_provider=FakeOcr())
     assert validate_run(run) == []
     assert len(list((run / "frames").glob("*.jpg"))) == 3
+    annotated = list((run / "frames/annotated").glob("*.jpg"))
+    assert len(annotated) == 3
+    assert all("__00-00-" in path.name for path in annotated)
+    with (run / "frames/index.csv").open(encoding="utf-8", newline="") as stream:
+        frame_rows = list(csv.DictReader(stream))
+    assert len(frame_rows) == 3
+    assert {row["frame_timestamp"] for row in frame_rows}
     assert "Title 1" in (run / "chapters.md").read_text(encoding="utf-8")
     for relative in (
         "config.effective.yaml",
@@ -100,6 +108,7 @@ def test_pipeline_produces_valid_deliverables(tmp_path: Path) -> None:
     after = [hashlib.sha256(path.read_bytes()).hexdigest() for path in protected]
     assert before == after
     assert "Reviewed Beta" in (run / "chapters.md").read_text(encoding="utf-8")
+    assert any("Reviewed-Beta" in path.name for path in (run / "frames/annotated").glob("*.jpg"))
 
     analyze(
         source,
