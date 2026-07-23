@@ -123,7 +123,7 @@ def main(argv: list[str] | None = None) -> int:
             config = load_config(args.config)
             _apply_overrides(config, args)
             source = args.input.resolve()
-            output = args.output or Path("vseg-output") / f"{source.stem}-analysis"
+            output = args.output or source.parent / f"{source.stem}-semantic-segmented"
             if args.force_new_run and output.exists() and any(output.iterdir()):
                 from datetime import UTC, datetime
 
