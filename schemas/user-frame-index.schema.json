@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "user-frame-index.schema.json",
+  "title": "ViSS user-requested frame index",
+  "type": "object",
+  "required": ["schema_version", "source", "output_mode", "selection", "frame_count", "frames"],
+  "properties": {
+    "schema_version": {"const": "1.1"},
+    "source": {
+      "type": "object",
+      "required": ["path", "sha256", "duration_s"],
+      "properties": {
+        "path": {"type": "string"},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "duration_s": {"type": "number", "exclusiveMinimum": 0},
+        "average_fps": {"type": ["number", "null"], "exclusiveMinimum": 0}
+      }
+    },
+    "output_mode": {"enum": ["annotated_only", "raw_and_annotated"]},
+    "selection": {"type": "object"},
+    "frame_count": {"type": "integer", "minimum": 1},
+    "frames": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "index", "requested_timestamp_s", "selected_timestamp_s", "offset_s",
+          "frame_path", "quality_score", "selection_score", "selection_reason",
+          "needs_review", "candidate_count"
+        ],
+        "properties": {
+          "index": {"type": "integer", "minimum": 1},
+          "requested_timestamp_s": {"type": "number", "minimum": 0},
+          "selected_timestamp_s": {"type": "number", "minimum": 0},
+          "offset_s": {"type": "number"},
+          "frame_path": {"type": "string"},
+          "quality_score": {"type": "number", "minimum": 0, "maximum": 1},
+          "selection_score": {"type": "number", "minimum": 0, "maximum": 1},
+          "selection_reason": {"type": "string"},
+          "needs_review": {"type": "boolean"},
+          "candidate_count": {"type": "integer", "minimum": 1}
+        }
+      }
+    }
+  }
+}

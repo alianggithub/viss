@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/vseg/frame-index.schema.json",
+  "title": "Annotated representative frame index",
+  "type": "object",
+  "required": ["schema_version", "output_mode", "frame_count", "frames"],
+  "properties": {
+    "schema_version": {"const": "2.0"},
+    "output_mode": {"const": "annotated_only"},
+    "frame_count": {"type": "integer", "minimum": 0},
+    "frames": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "index", "segment_id", "scene_title", "segment_start_s", "segment_end_s",
+          "frame_timestamp_s", "frame_timestamp", "frame_path", "annotated_filename"
+        ],
+        "properties": {
+          "index": {"type": "integer", "minimum": 1},
+          "segment_id": {"type": "string", "minLength": 1},
+          "scene_title": {"type": ["string", "null"]},
+          "segment_start_s": {"type": "number", "minimum": 0},
+          "segment_end_s": {"type": "number", "exclusiveMinimum": 0},
+          "frame_timestamp_s": {"type": "number", "minimum": 0},
+          "frame_timestamp": {"type": "string"},
+          "source_frame_number_estimate": {"type": ["integer", "null"]},
+          "frame_path": {"type": "string"},
+          "annotated_filename": {"type": "string"},
+          "quality_score": {"type": ["number", "null"]},
+          "selection_reason": {"type": ["string", "null"]},
+          "needs_review": {"type": "boolean"}
+        }
+      }
+    }
+  }
+}

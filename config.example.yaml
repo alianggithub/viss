@@ -1,0 +1,66 @@
+runtime:
+  device: auto
+  workers: 2
+transcription:
+  provider: faster_whisper
+  model: small
+  language: auto
+  word_timestamps: true
+  vad: true
+  suspicious_gap_s: 8.0
+  cpu_threads: 8
+visual:
+  analysis_width: 320
+  sample_fps: 2.0
+  cut_threshold: 0.42
+  black_threshold: 0.06
+ocr:
+  mode: auto
+  max_frames_per_minute: 30
+semantic:
+  provider: heuristic
+  chunk_duration_s: 600.0
+  chunk_overlap_s: 30.0
+  candidate_merge_s: 1.5
+  lexical_change_threshold: 0.67
+  pause_threshold_s: 1.2
+  min_candidate_score: 0.52
+frame_selection:
+  search_window_s: 8.0
+  sample_fps: 3.0
+  min_quality: 0.45
+  min_relevance: 0.0
+frame_annotation:
+  enabled: true
+  overlay_timestamp: true
+  overlay_scene_title: true
+  scene_aware_filenames: true
+  font_path: null
+  font_size_ratio: 0.042
+  jpeg_quality: 92
+  max_scene_filename_chars: 64
+user_frame_dump:
+  fine_tune: true
+  search_window_s: 1.0
+  sample_fps: 8.0
+  quality_weight: 0.8
+  proximity_weight: 0.2
+  min_quality: 0.45
+  annotated_only: true
+vision_recognition:
+  mode: auto
+  provider: openai_compatible
+  endpoint: http://127.0.0.1:8000/v1
+  model: nvidia/NVIDIA-Nemotron-Nano-12B-v2-VL-FP8
+  api_key: null
+  timeout_s: 30.0
+  max_tokens: 256
+summary:
+  enabled: true
+  max_key_points: 12
+  max_points_per_segment: 2
+  max_overview_topics: 12
+  include_timestamps: true
+privacy:
+  allow_network_models: false
+  retain_temporary_audio: false
