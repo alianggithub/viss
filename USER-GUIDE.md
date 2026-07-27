@@ -347,3 +347,106 @@ uv run vseg review /media/trip-viss-analysis segment-0002 \
 
 Keep `index.json`, `run.json`, and evidence files when reporting issues; they make frame
 and model decisions reproducible.
+
+---
+
+## 9. FAQ & Session Notes (2026-07-27)
+
+### Q: What's the difference between RapidOCR and Nemotron?
+
+| Aspect | RapidOCR | Nemotron (vision) |
+|---|---|---|
+| Role | **OCR** — reads on-screen text | **Vision recognition** — describes frame content in natural language |
+| Pipeline step | Step 6/9: "Reading on-screen text near likely boundaries" | Step 8/9: "Running optional vision-capability fallback" |
+| Output | `evidence/ocr-events.json` (structured text detections) | `visual-descriptions.md`, `evidence/vision-recognition.json` |
+| Model | PP-OCRv6 (onnxruntime, local) | NVIDIA Nemotron-Nano-12B-v2-VL (VLM, needs NIM/vLLM endpoint) |
+| Purpose | Supporting evidence for boundary decisions | Human-readable visual descriptions of each segment's representative frame |
+
+**Key insight**: Nemotron is **not an OCR model**. It does not extract text. It generates
+semantic descriptions like "A 3D molecular model of water molecules..." or "A series of
+purple podiums with national flags..." — useful for understanding visual context, not
+for reading text.
+
+### Q: If I don't use `--vision on`, what do I lose?
+
+Only two files:
+- `visual-descriptions.md` — natural-language descriptions per segment
+- `evidence/vision-recognition.json` — structured VLM responses with confidence
+
+Everything else is identical:
+- Segment titles (from transcript + visual cuts + OCR)
+- Scene-aware frame filenames (`0001__00-00-00-000__家比较.jpg`)
+- Timestamp + scene title overlays on frames
+- `key-points.md`, `chapters.md`, `summary.md`, transcript
+- OCR evidence (`ocr-events.json`)
+- Visual transition evidence (`visual-events.json`)
+
+### Q: How does frame selection work?
+
+1. **Boundaries decided first** (steps 1-5): transcript heuristics + visual cuts + OCR
+2. **Then representative frame picked** (step 7): searches first 8s of each segment at 3 fps,
+   picks first frame passing quality ≥ 0.45
+3. **Then annotated** (step 9): timestamp + scene title overlaid, saved with scene-aware name
+
+The filename pattern: `{index:04d}__{timestamp}__{scene_slug}.jpg`
+
+### Q: What does `--vision on` actually add to the output files?
+
+```text
+With --vision on:
+  visual-descriptions.md          ← NEW: "A 3D molecular model of water molecules..."
+  evidence/vision-recognition.json ← NEW: structured VLM responses
+
+Without --vision on:
+  (these two files don't exist)
+```
+
+Everything else is the same.
+
+### Q: How do I run with Nemotron via NVIDIA NIM (cloud endpoint)?
+
+```bash
+# Config file approach (recommended for API keys)
+cat > my-nim-config.yaml <<'EOF'
+vision_recognition:
+  mode: on
+  provider: openai_compatible
+  endpoint: https://integrate.api.nvidia.com/v1
+  model: nvidia/nemotron-nano-12b-v2-vl
+  api_key: nvapi-xxxxxxxxxxxxxxxxx
+  timeout_s: 30.0
+  max_tokens: 256
+EOF
+
+uv run vseg analyze video.mp4 --config my-nim-config.yaml --model small --allow-network-models
+```
+
+### Q: Frame output layout — why no `annotated/` subfolder?
+
+ViSS 0.4 writes annotated frames **directly to `frames/`** with scene-aware names:
+```
+frames/
+  0001__00-00-00-000__Opening.jpg
+  0002__00-01-15-200__Temple-entrance.jpg
+  index.json, index.csv, index.md
+```
+No `annotated/` subfolder, no duplicate raw frames. This matches the pattern in
+`~/doc/travel/planning/candidate/最美的三十个神仙秘境-semantic-segmented/frames/annotated/`
+but without the extra folder level. Use `--raw-and-annotated` on `dump-frames` if you
+need the legacy layout.
+
+### Q: What are the three configurations I can compare in my test runs?
+
+| Config | Directory | ASR | OCR | Vision |
+|---|---|---|---|---|
+| v0.2.0 | `WeChatAppEx_*/` | faster-whisper | RapidOCR | ❌ |
+| v0.4.0 | `WeChatAppEx_*-viss-analysis/` | faster-whisper | RapidOCR | ❌ |
+| v0.4.0 + Nemotron | `WeChatAppEx_*-viss-analysis-nemotron/` | faster-whisper | RapidOCR | ✅ Nemotron-Nano-12B-v2-VL |
+
+All three share: same source videos, same frame annotation style, same index format.
+Nemotron adds only `visual-descriptions.md` and `vision-recognition.json`.
+
+---
+
+*Session conducted 2026-07-27 with Hermes Agent. Full processing log in
+`SESSION-NOTES-2026-07-27.md`.*
