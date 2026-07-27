@@ -115,13 +115,13 @@ def render_frame_annotations(
     segments: Iterable[Any],
     config: FrameAnnotationConfig,
 ) -> list[dict[str, Any]]:
-    """Write annotated images plus JSON, CSV, and Markdown frame indexes."""
+    """Write annotated frames directly to frames/ with scene-aware filenames."""
     if not config.enabled:
         return []
     frames_dir = run_dir / "frames"
-    annotated_dir = frames_dir / "annotated"
-    annotated_dir.mkdir(parents=True, exist_ok=True)
-    for stale in annotated_dir.glob("*.jpg"):
+    frames_dir.mkdir(parents=True, exist_ok=True)
+    # Clean old annotated frames (files matching the pattern)
+    for stale in frames_dir.glob("[0-9][0-9][0-9][0-9]__*__*.jpg"):
         stale.unlink()
     source = read_json(run_dir / "source.json")
     average_fps = source.get("average_fps")
@@ -143,7 +143,7 @@ def render_frame_annotations(
             else f"{index:04d}__{filename_timestamp(timestamp_s)}.jpg"
         )
         original = contained_path(run_dir, str(frame["path"]))
-        annotated = annotated_dir / filename
+        annotated = frames_dir / filename
         annotate_frame(original, annotated, timestamp, str(segment.get("title") or ""), config)
         rows.append(
             {
@@ -158,7 +158,7 @@ def render_frame_annotations(
                     round(timestamp_s * float(average_fps)) if average_fps else None
                 ),
                 "original_path": str(frame["path"]),
-                "annotated_path": f"frames/annotated/{filename}",
+                "annotated_path": f"frames/{filename}",
                 "annotated_filename": filename,
                 "quality_score": frame.get("quality_score"),
                 "selection_reason": frame.get("selection_reason"),
@@ -189,8 +189,7 @@ def render_frame_annotations(
         title = str(row["scene_title"] or "").replace("|", "\\|")
         markdown.append(
             f"| {row['index']} | {row['frame_timestamp']} | {title} | "
-            f"{row['segment_id']} | [{row['annotated_filename']}](annotated/"
-            f"{row['annotated_filename']}) |"
+            f"{row['segment_id']} | [{row['annotated_filename']}]({row['annotated_filename']}) |"
         )
     (frames_dir / "index.md").write_text("\n".join(markdown) + "\n", encoding="utf-8")
     return rows
