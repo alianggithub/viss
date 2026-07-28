@@ -987,7 +987,7 @@ wheels = [
 
 [[package]]
 name = "video-semantic-segmenter"
-version = "0.2.1"
+version = "0.2.0"
 source = { editable = "." }
 dependencies = [
     { name = "av" },

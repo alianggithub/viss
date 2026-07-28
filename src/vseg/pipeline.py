@@ -27,6 +27,7 @@ from .summarize import render_video_summary
 from .transcribe import FasterWhisperTranscriber, transcript_from_dict
 from .validate import validate_run
 from .vision import OpenAICompatibleVisionRecognizer, recognize_segment_frames, render_visual_descriptions
+from .organize import post_analysis_organize
 
 Progress = Callable[[str], None]
 
@@ -70,6 +71,7 @@ def analyze(
     transcriber: FasterWhisperTranscriber | None = None,
     ocr_provider: RapidOcrProvider | None = None,
     vision_recognizer: OpenAICompatibleVisionRecognizer | None = None,
+    title_override: str | None = None,
 ) -> Path:
     media_path = media_path.expanduser().resolve()
     run_dir = run_dir.expanduser().resolve()
@@ -267,4 +269,6 @@ def analyze(
         "vseg-render-v2",
         {"path": "segments.json"},
     )
-    return run_dir
+    # Post-analysis organization: copy video, rename based on content
+    final_run_dir = post_analysis_organize(run_dir, config, segments, vision_events, title_override)
+    return final_run_dir

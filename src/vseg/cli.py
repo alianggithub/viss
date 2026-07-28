@@ -4,10 +4,11 @@ import argparse
 import sys
 from pathlib import Path
 
-from .config import load_config, validate_config
+from .config import Config, FrameAnnotationConfig, load_config, validate_config
 from .evaluate import evaluate_run
 from .frame_annotations import render_frame_annotations
-from .io import read_json
+from .io import atomic_write_json, read_json
+from .organize import organize_existing_flat_layout, post_analysis_organize
 from .pipeline import analyze
 from .review import record_override, render_reviewed
 from .user_frames import dump_user_frames, load_timestamp_requests
@@ -32,6 +33,7 @@ def _parser() -> argparse.ArgumentParser:
     analyze_parser.add_argument("--vision-endpoint")
     analyze_parser.add_argument("--vision-model")
     analyze_parser.add_argument("--allow-network-models", action="store_true")
+    analyze_parser.add_argument("--title", help="override video title for folder/naming")
     analyze_parser.add_argument("--resume", action="store_true")
     analyze_parser.add_argument("--force-new-run", action="store_true")
     resume_parser = subparsers.add_parser("resume", help="resume an existing run")
@@ -79,6 +81,9 @@ def _parser() -> argparse.ArgumentParser:
     evaluate_parser = subparsers.add_parser("evaluate", help="score a run against annotations")
     evaluate_parser.add_argument("run_dir", type=Path)
     evaluate_parser.add_argument("reference", type=Path)
+    organize_parser = subparsers.add_parser("organize", help="organize flat layout into per-video folders")
+    organize_parser.add_argument("--root", type=Path, default=Path("~/doc/tech"))
+    organize_parser.add_argument("--config", type=Path)
     return parser
 
 
@@ -169,6 +174,13 @@ def main(argv: list[str] | None = None) -> int:
                 f"recall={result['topic_recall']:.3f} f1={result['topic_f1']:.3f}"
             )
             return 0
+        if args.command == "organize":
+            config = load_config(args.config)
+            root = args.root.expanduser().resolve()
+            created = organize_existing_flat_layout(root, config)
+            for folder in created:
+                print(f"organized: {folder}")
+            return 0
         if args.command == "resume":
             run_dir = args.run_dir.resolve()
             source_data = read_json(run_dir / "source.json")
@@ -178,13 +190,19 @@ def main(argv: list[str] | None = None) -> int:
             config = load_config(args.config)
             _apply_overrides(config, args)
             source = args.input.expanduser().resolve()
-            output = args.output or source.parent / f"{source.stem}-viss-analysis"
+            # Default to organized output under config.output.root
+            if args.output:
+                output = args.output.expanduser().resolve()
+            else:
+                output_root = Path(config.output.root).expanduser().resolve()
+                video_folder = output_root / source.stem
+                output = video_folder / f"{source.stem}-viss-analysis"
             if args.force_new_run and output.exists() and any(output.iterdir()):
                 from datetime import UTC, datetime
 
                 suffix = datetime.now(UTC).strftime("run-%Y%m%dT%H%M%SZ")
                 output = output / suffix
-            result = analyze(source, output, config, resume=args.resume)
+            result = analyze(source, output, config, resume=args.resume, title_override=args.title)
         print(f"complete: {result}")
         return 0
     except (FileNotFoundError, ValueError, RuntimeError, OSError) as exc:

@@ -70,6 +70,9 @@ def test_pipeline_produces_valid_deliverables(tmp_path: Path) -> None:
     run = tmp_path / "run"
     _video(source)
     config = Config()
+    config.output.organize_by_default = False
+    config.output.rename_after_analysis = False
+    config.frame_annotation.scene_aware_filenames = False
     config.semantic.candidate_merge_s = 0.25
     config.semantic.pause_threshold_s = 0.9
     config.transcription.suspicious_gap_s = 10.0

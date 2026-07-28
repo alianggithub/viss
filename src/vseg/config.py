@@ -60,6 +60,13 @@ class FrameSelectionConfig:
 
 
 @dataclass(slots=True)
+class OutputConfig:
+    root: str = "~/doc/tech"
+    organize_by_default: bool = True
+    rename_after_analysis: bool = True
+
+
+@dataclass(slots=True)
 class FrameAnnotationConfig:
     enabled: bool = True
     overlay_timestamp: bool = True
@@ -120,6 +127,7 @@ class Config:
     ocr: OcrConfig = field(default_factory=OcrConfig)
     semantic: SemanticConfig = field(default_factory=SemanticConfig)
     frame_selection: FrameSelectionConfig = field(default_factory=FrameSelectionConfig)
+    output: OutputConfig = field(default_factory=OutputConfig)
     frame_annotation: FrameAnnotationConfig = field(default_factory=FrameAnnotationConfig)
     user_frame_dump: UserFrameDumpConfig = field(default_factory=UserFrameDumpConfig)
     vision_recognition: VisionRecognitionConfig = field(default_factory=VisionRecognitionConfig)
@@ -140,6 +148,7 @@ _SECTIONS: dict[str, type[Any]] = {
     "ocr": OcrConfig,
     "semantic": SemanticConfig,
     "frame_selection": FrameSelectionConfig,
+    "output": OutputConfig,
     "frame_annotation": FrameAnnotationConfig,
     "user_frame_dump": UserFrameDumpConfig,
     "vision_recognition": VisionRecognitionConfig,
@@ -217,3 +226,9 @@ def validate_config(config: Config) -> None:
     summary = config.summary
     if min(summary.max_key_points, summary.max_points_per_segment, summary.max_overview_topics) < 1:
         raise ValueError("summary limits must be >= 1")
+    output = config.output
+    root = Path(output.root).expanduser()
+    if not root.exists():
+        raise ValueError(f"output.root does not exist: {output.root}")
+    if not root.is_dir():
+        raise ValueError(f"output.root is not a directory: {output.root}")

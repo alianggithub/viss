@@ -67,10 +67,13 @@ def validate_run(run_dir: Path) -> list[str]:
                 if len(rows) != expected or int(frame_index["frame_count"]) != expected:
                     errors.append(f"frame index count mismatch: {len(rows)} != {expected}")
                 for row in rows:
-                    frame_path = row.get("frame_path") or row.get("annotated_path")
+                    frame_path = row.get("annotated_filename") or row.get("frame_path") or row.get("annotated_path")
                     if not frame_path:
                         errors.append(f"frame index row lacks frame_path: {row.get('segment_id')}")
                         continue
+                    # annotated_filename is just the filename, frames are in frames/ subdirectory
+                    if not frame_path.startswith("frames/"):
+                        frame_path = "frames/" + frame_path
                     annotated = contained_path(run_dir, frame_path)
                     if not annotated.is_file():
                         errors.append(

@@ -47,9 +47,14 @@ def test_annotation_overwrites_canonical_frame_and_writes_three_indexes(tmp_path
     row = rows[0]
     assert row["frame_timestamp"] == "00:00:12.345"
     assert row["source_frame_number_estimate"] == 370
+    # Frame should be renamed to scene-aware filename
     assert row["frame_path"] == "frames/segment-0001.jpg"
-    assert row["scene_title"] == "神奇 美景 / Guilin"
-    assert (run / row["frame_path"]).read_bytes() != before
+    assert row["annotated_filename"].startswith("0001__00-00-12-345__")
+    assert "神奇-美景-Guilin" in row["annotated_filename"]
+    # Original file should be replaced by annotated version with new name
+    assert not (run / "frames/segment-0001.jpg").exists()
+    assert (run / row["frame_path"]).parent.joinpath(row["annotated_filename"]).exists()
+    assert (run / row["frame_path"]).parent.joinpath(row["annotated_filename"]).read_bytes() != before
     assert not (run / "frames/annotated").exists()
     assert read_json(run / "frames/index.json")["output_mode"] == "annotated_only"
     with (run / "frames/index.csv").open(encoding="utf-8", newline="") as stream:
@@ -57,7 +62,7 @@ def test_annotation_overwrites_canonical_frame_and_writes_three_indexes(tmp_path
     assert csv_row["frame_timestamp"] == "00:00:12.345"
     markdown = (run / "frames/index.md").read_text(encoding="utf-8")
     assert "神奇 美景 / Guilin" in markdown
-    assert "(segment-0001.jpg)" in markdown
+    assert f"({row['annotated_filename']})" in markdown
 
 
 def test_rerender_keeps_one_stable_annotated_frame(tmp_path: Path) -> None:
@@ -65,7 +70,7 @@ def test_rerender_keeps_one_stable_annotated_frame(tmp_path: Path) -> None:
     render_frame_annotations(run, segments, FrameAnnotationConfig())
     segments[0]["title"] = "Reviewed Scene"
     row = render_frame_annotations(run, segments, FrameAnnotationConfig())[0]
-    assert (run / row["frame_path"]).is_file()
+    assert (run / row["frame_path"]).parent.joinpath(row["annotated_filename"]).is_file()
     assert len(list((run / "frames").glob("*.jpg"))) == 1
     assert not (run / "frames/annotated").exists()
     assert "Reviewed Scene" in (run / "frames/index.md").read_text(encoding="utf-8")
@@ -80,5 +85,7 @@ def test_annotate_frames_command_retrofits_existing_run(tmp_path: Path) -> None:
     atomic_write_json(run / "segments.json", {"segments": segments})
     assert main(["annotate-frames", str(run)]) == 0
     assert (run / "frames/index.json").is_file()
-    assert len(list((run / "frames").glob("*.jpg"))) == 1
+    # Should have exactly one frame file (scene-aware named)
+    frame_files = list((run / "frames").glob("*.jpg"))
+    assert len(frame_files) == 1
     assert not legacy.exists()

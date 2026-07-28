@@ -137,8 +137,42 @@ def render_frame_annotations(
         timestamp_s = float(frame["timestamp_s"])
         timestamp = format_timestamp(timestamp_s)
         canonical = contained_path(run_dir, str(frame["path"]))
-        annotate_frame(canonical, canonical, timestamp, str(segment.get("title") or ""), config)
-        filename = canonical.name
+        scene_title = str(segment.get("title") or "")
+
+        # Find existing annotated frame file (could be renamed to scene-aware name)
+        if config.scene_aware_filenames and scene_title:
+            slug = scene_slug(scene_title, f"segment-{index:04d}", config.max_scene_filename_chars)
+            timestamp_part = filename_timestamp(timestamp_s)
+            expected_filename = f"{index:04d}__{timestamp_part}__{slug}.jpg"
+            expected_path = frames_dir / expected_filename
+        else:
+            expected_path = canonical
+
+        # If expected file doesn't exist, try to find any existing frame file for this segment
+        source_frame = expected_path if expected_path.exists() else canonical
+        if not source_frame.exists():
+            # Fallback: find any frame file matching this segment
+            for existing in frames_dir.glob("*.jpg"):
+                if f"segment-{index:04d}" in existing.name or existing.name.startswith(f"{index:04d}__"):
+                    source_frame = existing
+                    break
+
+        # Re-annotate the frame
+        if source_frame.exists():
+            annotate_frame(source_frame, source_frame, timestamp, scene_title, config)
+
+        # Rename to scene-aware filename if enabled
+        if config.scene_aware_filenames and scene_title:
+            slug = scene_slug(scene_title, f"segment-{index:04d}", config.max_scene_filename_chars)
+            timestamp_part = filename_timestamp(timestamp_s)
+            new_filename = f"{index:04d}__{timestamp_part}__{slug}.jpg"
+            new_path = frames_dir / new_filename
+            if source_frame != new_path:
+                source_frame.rename(new_path)
+            filename = new_filename
+        else:
+            filename = source_frame.name
+
         rows.append(
             {
                 "index": index,
