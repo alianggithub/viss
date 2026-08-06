@@ -193,6 +193,8 @@ def load_config(path: Path | None) -> Config:
     # Set default output.root from data home if not provided
     if not config.output.root:
         config.output.root = str(_data_home() / "output")
+    # Ensure output.root is always an expanded absolute path
+    config.output.root = str(Path(config.output.root).expanduser())
     validate_config(config)
     return config
 
