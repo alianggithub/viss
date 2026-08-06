@@ -11,3 +11,7 @@ models/
 runs/
 *.tmp
 
+# Data directories
+output/
+data/
+

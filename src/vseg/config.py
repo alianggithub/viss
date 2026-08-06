@@ -2,11 +2,17 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
 import yaml
+
+
+def _data_home() -> Path:
+    """Get the data home directory from env or default to ~/data/viss."""
+    return Path(os.environ.get("VSEG_DATA_HOME", "~/data/viss")).expanduser()
 
 
 @dataclass(slots=True)
@@ -61,7 +67,7 @@ class FrameSelectionConfig:
 
 @dataclass(slots=True)
 class OutputConfig:
-    root: str = "~/doc/tech"
+    root: str = ""
     organize_by_default: bool = True
     rename_after_analysis: bool = True
 
@@ -167,7 +173,10 @@ def _strict_dataclass(cls: type[Any], values: dict[str, Any], section: str) -> A
 
 def load_config(path: Path | None) -> Config:
     if path is None:
-        return Config()
+        config = Config()
+        config.output.root = str(_data_home() / "output")
+        validate_config(config)
+        return config
     raw = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
     if not isinstance(raw, dict):
         raise ValueError("configuration root must be a mapping")
@@ -181,6 +190,9 @@ def load_config(path: Path | None) -> Config:
             raise ValueError(f"configuration section {name} must be a mapping")
         sections[name] = _strict_dataclass(cls, values, name)
     config = Config(**sections)
+    # Set default output.root from data home if not provided
+    if not config.output.root:
+        config.output.root = str(_data_home() / "output")
     validate_config(config)
     return config
 
@@ -228,7 +240,6 @@ def validate_config(config: Config) -> None:
         raise ValueError("summary limits must be >= 1")
     output = config.output
     root = Path(output.root).expanduser()
-    if not root.exists():
-        raise ValueError(f"output.root does not exist: {output.root}")
+    root.mkdir(parents=True, exist_ok=True)
     if not root.is_dir():
         raise ValueError(f"output.root is not a directory: {output.root}")

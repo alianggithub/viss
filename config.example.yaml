@@ -1,3 +1,6 @@
+# Optional: override data directory location via environment variable
+# VSEG_DATA_HOME=/path/to/data
+
 runtime:
   device: auto
   workers: 2
@@ -64,3 +67,8 @@ summary:
 privacy:
   allow_network_models: false
   retain_temporary_audio: false
+
+output:
+  root: "~/data/viss/output"
+  organize_by_default: true
+  rename_after_analysis: true
